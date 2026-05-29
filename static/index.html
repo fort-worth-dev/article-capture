@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Knowledge Pipeline</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg: #14120d;
+      --panel: #1c1a13;
+      --line: #34301f;
+      --ink: #ece3cf;
+      --muted: #9a9176;
+      --accent: #e0a43b;
+      --accent-dim: #b9842c;
+      --err: #d9744f;
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; height: 100%; }
+    body {
+      background:
+        radial-gradient(120% 80% at 80% -10%, #221f15 0%, transparent 60%),
+        var(--bg);
+      color: var(--ink);
+      font-family: "IBM Plex Mono", monospace;
+      font-size: 15px;
+      line-height: 1.55;
+      -webkit-font-smoothing: antialiased;
+    }
+    .wrap { max-width: 720px; margin: 0 auto; padding: 8vh 24px 12vh; }
+
+    header { margin-bottom: 40px; }
+    .kicker {
+      font-size: 11px; letter-spacing: 0.32em; text-transform: uppercase;
+      color: var(--accent-dim); margin-bottom: 14px;
+    }
+    h1 {
+      font-family: "Instrument Serif", serif;
+      font-weight: 400; font-size: 58px; line-height: 0.98; margin: 0;
+      letter-spacing: -0.01em;
+    }
+    h1 em { color: var(--accent); font-style: italic; }
+    .sub { color: var(--muted); margin-top: 16px; max-width: 46ch; }
+
+    .capture {
+      display: flex; gap: 10px; margin-top: 36px;
+      border: 1px solid var(--line); background: var(--panel);
+      padding: 8px; border-radius: 4px;
+    }
+    .capture:focus-within { border-color: var(--accent-dim); }
+    input {
+      flex: 1; background: transparent; border: 0; color: var(--ink);
+      font-family: inherit; font-size: 15px; padding: 10px 12px; outline: none;
+    }
+    input::placeholder { color: #6c654f; }
+    button {
+      font-family: inherit; font-weight: 600; font-size: 13px;
+      letter-spacing: 0.08em; text-transform: uppercase;
+      background: var(--accent); color: #1a1305; border: 0;
+      padding: 0 22px; border-radius: 3px; cursor: pointer;
+      transition: background 0.15s ease, transform 0.05s ease;
+    }
+    button:hover:not(:disabled) { background: #efb756; }
+    button:active:not(:disabled) { transform: translateY(1px); }
+    button:disabled { opacity: 0.5; cursor: progress; }
+
+    .status { margin-top: 22px; min-height: 22px; font-size: 13px; color: var(--muted); }
+    .status .dot {
+      display: inline-block; width: 7px; height: 7px; border-radius: 50%;
+      background: var(--accent); margin-right: 9px; vertical-align: middle;
+      animation: pulse 1s ease-in-out infinite;
+    }
+    .status.error { color: var(--err); }
+    @keyframes pulse { 0%,100% { opacity: 0.25; } 50% { opacity: 1; } }
+
+    .card {
+      margin-top: 30px; border: 1px solid var(--line); border-left: 2px solid var(--accent);
+      background: var(--panel); border-radius: 4px; padding: 28px 30px;
+      opacity: 0; transform: translateY(8px);
+      animation: reveal 0.5s ease forwards;
+    }
+    @keyframes reveal { to { opacity: 1; transform: none; } }
+    .card .meta {
+      font-size: 11px; letter-spacing: 0.18em; text-transform: uppercase;
+      color: var(--accent-dim); margin-bottom: 10px;
+    }
+    .card h2 {
+      font-family: "Instrument Serif", serif; font-weight: 400;
+      font-size: 28px; line-height: 1.1; margin: 0 0 18px;
+    }
+    .card h3 {
+      font-size: 11px; letter-spacing: 0.2em; text-transform: uppercase;
+      color: var(--muted); margin: 22px 0 10px;
+    }
+    .card .tldr { color: var(--ink); }
+    .card ul { margin: 0; padding-left: 20px; }
+    .card li { margin: 7px 0; }
+    .card li::marker { color: var(--accent-dim); }
+    .tags { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 20px; }
+    .tag {
+      font-size: 12px; color: var(--accent); border: 1px solid var(--line);
+      border-radius: 999px; padding: 3px 12px;
+    }
+    .open {
+      display: inline-block; margin-top: 24px; color: var(--accent);
+      text-decoration: none; border-bottom: 1px solid var(--accent-dim);
+      padding-bottom: 2px; font-size: 13px;
+    }
+    .open:hover { color: #efb756; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <div class="kicker">Personal Knowledge Pipeline</div>
+      <h1>Read it once.<br /><em>Keep it forever.</em></h1>
+      <p class="sub">Drop an article or YouTube link. It gets fetched, summarized by Claude, and filed in Notion.</p>
+    </header>
+
+    <div class="capture">
+      <input id="url" type="url" placeholder="https://… or a youtube.com/watch link" autocomplete="off" autofocus />
+      <button id="go">Capture</button>
+    </div>
+
+    <div class="status" id="status"></div>
+    <div id="result"></div>
+  </div>
+
+  <script>
+    const urlInput = document.getElementById("url");
+    const goBtn = document.getElementById("go");
+    const statusEl = document.getElementById("status");
+    const resultEl = document.getElementById("result");
+
+    function setStatus(msg, isError = false) {
+      statusEl.className = "status" + (isError ? " error" : "");
+      statusEl.innerHTML = msg
+        ? (isError ? "" : '<span class="dot"></span>') + msg
+        : "";
+    }
+
+    function escapeHtml(s) {
+      return s.replace(/[&<>"']/g, c => (
+        { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]
+      ));
+    }
+
+    function formatErrorDetail(detail) {
+      if (detail == null || detail === "") return "Something went wrong.";
+      if (typeof detail === "string") return detail;
+      if (Array.isArray(detail)) {
+        return detail
+          .map(item => (item && typeof item === "object" && item.msg) ? item.msg : String(item))
+          .join("; ");
+      }
+      if (typeof detail === "object" && detail.msg) return detail.msg;
+      return String(detail);
+    }
+
+    function renderResult(data) {
+      const points = data.key_points.map(p => `<li>${escapeHtml(p)}</li>`).join("");
+      const tags = data.tags.map(t => `<span class="tag">${escapeHtml(t)}</span>`).join("");
+      resultEl.innerHTML = `
+        <div class="card">
+          <div class="meta">${escapeHtml(data.source)}</div>
+          <h2>${escapeHtml(data.title)}</h2>
+          <p class="tldr">${escapeHtml(data.tldr)}</p>
+          <h3>Key points</h3>
+          <ul>${points}</ul>
+          <div class="tags">${tags}</div>
+          <a class="open" href="${escapeHtml(data.notion_url)}" target="_blank" rel="noopener">Open in Notion →</a>
+        </div>`;
+    }
+
+    async function capture() {
+      const url = urlInput.value.trim();
+      if (!url) return;
+      resultEl.innerHTML = "";
+      goBtn.disabled = true;
+      setStatus("Fetching, summarizing, filing…");
+      try {
+        const resp = await fetch("/capture", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ url })
+        });
+        const contentType = resp.headers.get("content-type") || "";
+        const data = contentType.includes("application/json")
+          ? await resp.json()
+          : null;
+        if (!resp.ok) {
+          const message = data
+            ? formatErrorDetail(data.detail)
+            : (resp.statusText || "Something went wrong.");
+          throw new Error(message);
+        }
+        if (!data) throw new Error("Unexpected response from server.");
+        setStatus("");
+        renderResult(data);
+        urlInput.value = "";
+      } catch (err) {
+        setStatus(err.message || "Something went wrong.", true);
+      } finally {
+        goBtn.disabled = false;
+      }
+    }
+
+    goBtn.addEventListener("click", capture);
+    urlInput.addEventListener("keydown", e => { if (e.key === "Enter") capture(); });
+  </script>
+</body>
+</html>
