@@ -1,5 +1,4 @@
-# Deploy the FastAPI backend at https://render.com (free tier available).
-# After deploy, set API_URL on Netlify to this service's URL (e.g. https://article-capture-api.onrender.com).
+# Deploy the full app (UI + API) at https://render.com (free tier available).
 services:
   - type: web
     name: article-capture-api

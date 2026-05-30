@@ -129,7 +129,6 @@
     <div id="result"></div>
   </div>
 
-  <script src="/config.js"></script>
   <script>
     const urlInput = document.getElementById("url");
     const goBtn = document.getElementById("go");
@@ -161,24 +160,11 @@
       return String(detail);
     }
 
-    function resolveCaptureUrl() {
-      const apiBase = (window.__API_BASE__ || "").replace(/\/$/, "");
-      if (apiBase) return `${apiBase}/capture`;
-      const host = window.location.hostname;
-      if (host === "localhost" || host === "127.0.0.1") return "/capture";
-      throw new Error(
-        "API_URL is not configured for this site. Set it on Netlify to your Render URL and redeploy."
-      );
-    }
-
     function httpErrorMessage(status, data) {
       if (data) return formatErrorDetail(data.detail);
       if (status === 504) {
         return (
-          "Request timed out before the browser got a response. " +
-          "Check Notion — the capture may have succeeded anyway. " +
-          "If this keeps happening, confirm Netlify has API_URL set and redeploy " +
-          "(POST must go to Render, not your Netlify domain)."
+          "Request timed out. Check Notion — the capture may have succeeded anyway."
         );
       }
       return `Request failed (HTTP ${status}). Try again.`;
@@ -205,16 +191,8 @@
       resultEl.innerHTML = "";
       goBtn.disabled = true;
       setStatus("Fetching, summarizing, filing…");
-      let captureUrl;
       try {
-        captureUrl = resolveCaptureUrl();
-      } catch (err) {
-        setStatus(err.message || "API is not configured.", true);
-        goBtn.disabled = false;
-        return;
-      }
-      try {
-        const resp = await fetch(captureUrl, {
+        const resp = await fetch("/capture", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ url })

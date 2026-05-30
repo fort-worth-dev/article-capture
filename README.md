@@ -71,24 +71,11 @@ Open <http://127.0.0.1:8000>, paste a link, hit Capture.
 uv run pytest
 ```
 
-## Deploy (Netlify + Render)
+## Deploy (Render)
 
-**Netlify hosts the UI only.** It supports JavaScript/TypeScript/Go functions — not Python.
-The capture pipeline runs on [Render](https://render.com) as FastAPI; a small Netlify
-function proxies `POST /capture` to that API.
-
-```
-Browser ──POST /capture──→ Render (FastAPI pipeline)
-   ↑
-Netlify serves static UI + config.js only
-```
-
-At build time, Netlify writes `static/config.js` from `API_URL` so the browser
-calls Render **directly**. Do not rely on Netlify's `/capture` proxy — it times
-out at ~26s while YouTube captures often take longer (Render may still finish
-and write to Notion even when the browser shows 504).
-
-### 1. Deploy the API on Render
+The UI and API run together as one FastAPI app on [Render](https://render.com).
+Open the service URL, paste a link, and `POST /capture` stays same-origin — no
+proxy or cross-domain config.
 
 1. [Render dashboard](https://dashboard.render.com/) → **New** → **Blueprint**
 2. Connect `fort-worth-dev/article-capture` — Render reads `render.yaml`
@@ -99,37 +86,13 @@ and write to Notion even when the browser shows 504).
    - `GEMINI_API_KEY` (required for YouTube)
    - `ANTHROPIC_MODEL` (optional)
    - `GEMINI_MODEL` (optional, defaults to `gemini-2.5-flash`)
-4. After deploy, copy the service URL (e.g. `https://article-capture-api.onrender.com`)
+4. After deploy, open your service URL (e.g. `https://article-capture-api.onrender.com`)
 
 Free tier sleeps after inactivity; the first request may take ~30s to wake up.
+Captures often take 15–60 seconds (YouTube: Gemini summarize + Notion).
 
-### 2. Configure Netlify
-
-Site settings → **Environment variables**:
-
-| Variable | Value |
-|----------|-------|
-| `API_URL` | Your Render URL (no trailing slash), e.g. `https://article-capture-api.onrender.com` |
-
-Secrets (`ANTHROPIC_*`, `GEMINI_*`, `NOTION_*`) live on **Render only** — not Netlify.
-
-Redeploy the Netlify site after setting `API_URL` (triggers a rebuild of
-`config.js`).
-
-### 3. Verify
-
-- Netlify build log should show `Wrote static/config.js`
-- Browser DevTools → Network: `POST` goes to your Render URL, not Netlify
-- Local dev unchanged: `uv run uvicorn src.app:app --reload` (uses same-origin `/capture`)
-
-### Notes
-
-- Captures often take 15–60 seconds (YouTube: Gemini summarize + Notion).
-- If you see **404 on /capture** locally, run uvicorn from the project root.
-- If you see **503 API_URL is not set**, add `API_URL` on Netlify and redeploy.
-- If you see **504 but a Notion row appeared**, the browser hit Netlify's proxy
-  instead of Render. Set `API_URL`, redeploy Netlify, and confirm in DevTools
-  that `POST /capture` goes to your `*.onrender.com` URL.
+If you previously deployed with Netlify, you can delete that site — Render serves
+everything now.
 
 ## Project layout
 
@@ -144,7 +107,7 @@ src/
   config.py        # typed settings from .env
   summarizer.py    # Claude for articles; Gemini for YouTube (structured JSON)
   notion_store.py  # Summary -> Notion page
-  app.py           # FastAPI: serves the page + runs the pipeline
+  app.py           # FastAPI: UI + capture API
 static/index.html  # single-page UI
 tests/             # extractor routing + YouTube URL tests
 ```
