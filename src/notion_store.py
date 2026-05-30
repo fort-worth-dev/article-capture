@@ -41,6 +41,7 @@ def _paragraph(text: str) -> dict:
 
 
 def _notion_api_error(exc: APIResponseError) -> StoreError:
+    detail = str(exc)
     if exc.code == APIErrorCode.Unauthorized:
         return StoreError(
             "Invalid Notion API key. Check NOTION_API_KEY in .env.",
@@ -53,8 +54,15 @@ def _notion_api_error(exc: APIResponseError) -> StoreError:
             status_code=502,
         )
     if exc.code == APIErrorCode.ValidationError:
+        if "is a page, not a database" in detail:
+            return StoreError(
+                "NOTION_DATABASE_ID points to a page, not a database. "
+                "Create a full-page table in Notion, connect your integration, "
+                "then use that database's ID.",
+                status_code=422,
+            )
         return StoreError(
-            f"Notion rejected the page: {exc.message}",
+            f"Notion rejected the page: {detail}",
             status_code=422,
         )
     if exc.code == APIErrorCode.RateLimited:
@@ -69,7 +77,7 @@ def _notion_api_error(exc: APIResponseError) -> StoreError:
         )
     if exc.code == APIErrorCode.InternalServerError:
         return StoreError("Notion server error. Try again.", status_code=502)
-    return StoreError(f"Notion error: {exc.message}", status_code=502)
+    return StoreError(f"Notion error: {detail}", status_code=502)
 
 
 def _bullet(text: str) -> dict:

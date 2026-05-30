@@ -70,6 +70,49 @@ Open <http://127.0.0.1:8000>, paste a link, hit Capture.
 uv run pytest
 ```
 
+## Deploy to Netlify
+
+The UI is static; `/capture` runs as a [Netlify Python
+function](https://docs.netlify.com/build/functions/get-started/?fn-language=python).
+Local dev still uses FastAPI + uvicorn unchanged.
+
+### 1. Connect the repo
+
+In [Netlify](https://app.netlify.com/) → **Add new site** → **Import from Git** →
+select `fort-worth-dev/article-capture`.
+
+Netlify reads `netlify.toml` automatically:
+
+- **Publish directory:** `static`
+- **Functions:** `netlify/functions`
+- **Redirect:** `/capture` → serverless function
+
+### 2. Set environment variables
+
+Site settings → **Environment variables** → add the same values as your local
+`.env`:
+
+| Variable | Required |
+|----------|----------|
+| `ANTHROPIC_API_KEY` | Yes |
+| `ANTHROPIC_MODEL` | No (defaults to Haiku) |
+| `NOTION_API_KEY` | Yes |
+| `NOTION_DATABASE_ID` | Yes |
+
+Redeploy after saving.
+
+### 3. Deploy
+
+Push to `main` (or trigger **Deploy site**). Your site will be live at
+`https://<site-name>.netlify.app`.
+
+### Notes
+
+- Each capture calls Claude + Notion and may take **15–30 seconds**. Netlify
+  functions allow up to ~30s; very long articles may timeout.
+- Secrets stay in Netlify env vars — never commit `.env`.
+- Local dev: `uv run uvicorn src.app:app --reload` (no Netlify CLI required).
+
 ## Project layout
 
 ```

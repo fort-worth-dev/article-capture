@@ -1,0 +1,11 @@
+[build]
+  publish = "static"
+  functions = "netlify/functions"
+
+[build.environment]
+  PYTHON_VERSION = "3.11"
+
+[[redirects]]
+  from = "/capture"
+  to = "/.netlify/functions/capture"
+  status = 200
