@@ -22,6 +22,12 @@ class Settings(BaseSettings):
     notion_api_key: str
     notion_database_id: str
 
+    # Gemini handles YouTube: it ingests the URL and fetches the video on
+    # Google's side, so the datacenter IP block never applies. Optional, so
+    # article-only setups don't need a key.
+    gemini_api_key: str | None = None
+    gemini_model: str = "gemini-2.5-flash"  # verify the current Flash id in AI Studio
+
 
 @lru_cache
 def get_settings() -> Settings:

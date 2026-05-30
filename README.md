@@ -13,7 +13,7 @@ functions so they can later become tools an agent calls.
 | Web API          | FastAPI + uvicorn       | ASP.NET Core minimal APIs         |
 | Models / config  | Pydantic / pydantic-settings | records + validation / `IOptions<T>` |
 | Article text     | trafilatura             | —                                 |
-| YouTube captions | youtube-transcript-api  | —                                 |
+| YouTube audio    | google-genai (Gemini)   | —                                 |
 | Summaries        | anthropic (Claude)      | —                                 |
 | Storage          | notion-client           | —                                 |
 | Packaging        | uv                      | NuGet + .csproj                   |
@@ -55,6 +55,7 @@ cp .env.example .env
 ```
 
 Fill in `ANTHROPIC_API_KEY`, `NOTION_API_KEY`, and `NOTION_DATABASE_ID`.
+For YouTube captures, also set `GEMINI_API_KEY` ([Google AI Studio](https://aistudio.google.com/apikey)).
 
 ### 4. Run
 
@@ -88,7 +89,9 @@ Browser → Netlify (static + capture.mjs proxy) → Render (FastAPI pipeline)
    - `ANTHROPIC_API_KEY`
    - `NOTION_API_KEY`
    - `NOTION_DATABASE_ID`
+   - `GEMINI_API_KEY` (required for YouTube)
    - `ANTHROPIC_MODEL` (optional)
+   - `GEMINI_MODEL` (optional, defaults to `gemini-2.5-flash`)
 4. After deploy, copy the service URL (e.g. `https://article-capture-api.onrender.com`)
 
 Free tier sleeps after inactivity; the first request may take ~30s to wake up.
@@ -101,7 +104,7 @@ Site settings → **Environment variables**:
 |----------|-------|
 | `API_URL` | Your Render URL (no trailing slash), e.g. `https://article-capture-api.onrender.com` |
 
-Secrets (`ANTHROPIC_*`, `NOTION_*`) live on **Render only** — not Netlify.
+Secrets (`ANTHROPIC_*`, `GEMINI_*`, `NOTION_*`) live on **Render only** — not Netlify.
 
 Redeploy the Netlify site after setting `API_URL`.
 
@@ -113,7 +116,8 @@ Redeploy the Netlify site after setting `API_URL`.
 
 ### Notes
 
-- Captures often take 15–30 seconds (fetch + Claude + Notion).
+- Captures often take 15–30 seconds (fetch/transcribe + Claude + Notion).
+- YouTube uses the Gemini API on Render (public videos, preview limits apply).
 - If you see **404 on /capture**, the JS function did not deploy — check the Functions tab.
 - If you see **503 API_URL is not set**, add `API_URL` on Netlify and redeploy.
 
@@ -124,7 +128,7 @@ src/
   extractors/
     base.py        # ContentExtractor interface (the Strategy seam)
     article.py     # trafilatura
-    youtube.py     # transcript + oEmbed metadata
+    youtube.py     # Gemini transcription + oEmbed metadata
     registry.py    # picks an extractor by URL; article is the fallback
   models.py        # Content (extractor output) + Summary (AI output)
   config.py        # typed settings from .env
@@ -132,7 +136,7 @@ src/
   notion_store.py  # Summary -> Notion page
   app.py           # FastAPI: serves the page + runs the pipeline
 static/index.html  # single-page UI
-tests/             # extractor routing tests
+tests/             # extractor routing + YouTube URL tests
 ```
 
 ## Adding a source
@@ -143,8 +147,9 @@ else changes — that's the point of the seam.
 
 ## Known limitations (v1, by design)
 
-- **No captions, no YouTube summary.** Videos without a transcript raise a clean
-  error rather than guessing. (Audio transcription via Whisper is a later add.)
+- **YouTube (Gemini API).** Public videos only; preview feature with daily limits
+  (~8 hours of video/day). Requires `GEMINI_API_KEY` on Render. Private/unlisted
+  videos will fail.
 - **Paywalled / JS-heavy articles** may not extract. A Playwright fallback is the
   natural next step.
 - **Very long transcripts** are trimmed before summarizing. Swap in chunked
