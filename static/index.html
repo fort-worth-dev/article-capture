@@ -161,6 +161,29 @@
       return String(detail);
     }
 
+    function resolveCaptureUrl() {
+      const apiBase = (window.__API_BASE__ || "").replace(/\/$/, "");
+      if (apiBase) return `${apiBase}/capture`;
+      const host = window.location.hostname;
+      if (host === "localhost" || host === "127.0.0.1") return "/capture";
+      throw new Error(
+        "API_URL is not configured for this site. Set it on Netlify to your Render URL and redeploy."
+      );
+    }
+
+    function httpErrorMessage(status, data) {
+      if (data) return formatErrorDetail(data.detail);
+      if (status === 504) {
+        return (
+          "Request timed out before the browser got a response. " +
+          "Check Notion — the capture may have succeeded anyway. " +
+          "If this keeps happening, confirm Netlify has API_URL set and redeploy " +
+          "(POST must go to Render, not your Netlify domain)."
+        );
+      }
+      return `Request failed (HTTP ${status}). Try again.`;
+    }
+
     function renderResult(data) {
       const points = data.key_points.map(p => `<li>${escapeHtml(p)}</li>`).join("");
       const tags = data.tags.map(t => `<span class="tag">${escapeHtml(t)}</span>`).join("");
@@ -182,8 +205,14 @@
       resultEl.innerHTML = "";
       goBtn.disabled = true;
       setStatus("Fetching, summarizing, filing…");
-      const apiBase = (window.__API_BASE__ || "").replace(/\/$/, "");
-      const captureUrl = apiBase ? `${apiBase}/capture` : "/capture";
+      let captureUrl;
+      try {
+        captureUrl = resolveCaptureUrl();
+      } catch (err) {
+        setStatus(err.message || "API is not configured.", true);
+        goBtn.disabled = false;
+        return;
+      }
       try {
         const resp = await fetch(captureUrl, {
           method: "POST",
@@ -195,10 +224,7 @@
           ? await resp.json()
           : null;
         if (!resp.ok) {
-          const message = data
-            ? formatErrorDetail(data.detail)
-            : `Request failed (HTTP ${resp.status}). Try again — long YouTube captures can take a minute.`;
-          throw new Error(message);
+          throw new Error(httpErrorMessage(resp.status, data));
         }
         if (!data) throw new Error("Unexpected response from server.");
         setStatus("");

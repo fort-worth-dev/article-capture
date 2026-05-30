@@ -78,12 +78,15 @@ The capture pipeline runs on [Render](https://render.com) as FastAPI; a small Ne
 function proxies `POST /capture` to that API.
 
 ```
-Browser → Netlify (static UI) ──POST /capture──→ Render (FastAPI pipeline)
+Browser ──POST /capture──→ Render (FastAPI pipeline)
+   ↑
+Netlify serves static UI + config.js only
 ```
 
 At build time, Netlify writes `static/config.js` from `API_URL` so the browser
-calls Render **directly**. This avoids Netlify's ~26s function timeout — YouTube
-captures (Gemini summarize) often take longer than that.
+calls Render **directly**. Do not rely on Netlify's `/capture` proxy — it times
+out at ~26s while YouTube captures often take longer (Render may still finish
+and write to Notion even when the browser shows 504).
 
 ### 1. Deploy the API on Render
 
@@ -124,6 +127,9 @@ Redeploy the Netlify site after setting `API_URL` (triggers a rebuild of
 - Captures often take 15–60 seconds (YouTube: Gemini summarize + Notion).
 - If you see **404 on /capture** locally, run uvicorn from the project root.
 - If you see **503 API_URL is not set**, add `API_URL` on Netlify and redeploy.
+- If you see **504 but a Notion row appeared**, the browser hit Netlify's proxy
+  instead of Render. Set `API_URL`, redeploy Netlify, and confirm in DevTools
+  that `POST /capture` goes to your `*.onrender.com` URL.
 
 ## Project layout
 
