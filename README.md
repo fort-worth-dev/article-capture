@@ -70,48 +70,52 @@ Open <http://127.0.0.1:8000>, paste a link, hit Capture.
 uv run pytest
 ```
 
-## Deploy to Netlify
+## Deploy (Netlify + Render)
 
-The UI is static; `/capture` runs as a [Netlify Python
-function](https://docs.netlify.com/build/functions/get-started/?fn-language=python).
-Local dev still uses FastAPI + uvicorn unchanged.
+**Netlify hosts the UI only.** It supports JavaScript/TypeScript/Go functions — not Python.
+The capture pipeline runs on [Render](https://render.com) as FastAPI; a small Netlify
+function proxies `POST /capture` to that API.
 
-### 1. Connect the repo
+```
+Browser → Netlify (static + capture.mjs proxy) → Render (FastAPI pipeline)
+```
 
-In [Netlify](https://app.netlify.com/) → **Add new site** → **Import from Git** →
-select `fort-worth-dev/article-capture`.
+### 1. Deploy the API on Render
 
-Netlify reads `netlify.toml` automatically:
+1. [Render dashboard](https://dashboard.render.com/) → **New** → **Blueprint**
+2. Connect `fort-worth-dev/article-capture` — Render reads `render.yaml`
+3. Set secret env vars when prompted:
+   - `ANTHROPIC_API_KEY`
+   - `NOTION_API_KEY`
+   - `NOTION_DATABASE_ID`
+   - `ANTHROPIC_MODEL` (optional)
+4. After deploy, copy the service URL (e.g. `https://article-capture-api.onrender.com`)
 
-- **Publish directory:** `static`
-- **Functions:** `netlify/functions`
-- **Redirect:** `/capture` → serverless function
+Free tier sleeps after inactivity; the first request may take ~30s to wake up.
 
-### 2. Set environment variables
+### 2. Configure Netlify
 
-Site settings → **Environment variables** → add the same values as your local
-`.env`:
+Site settings → **Environment variables**:
 
-| Variable | Required |
-|----------|----------|
-| `ANTHROPIC_API_KEY` | Yes |
-| `ANTHROPIC_MODEL` | No (defaults to Haiku) |
-| `NOTION_API_KEY` | Yes |
-| `NOTION_DATABASE_ID` | Yes |
+| Variable | Value |
+|----------|-------|
+| `API_URL` | Your Render URL (no trailing slash), e.g. `https://article-capture-api.onrender.com` |
 
-Redeploy after saving.
+Secrets (`ANTHROPIC_*`, `NOTION_*`) live on **Render only** — not Netlify.
 
-### 3. Deploy
+Redeploy the Netlify site after setting `API_URL`.
 
-Push to `main` (or trigger **Deploy site**). Your site will be live at
-`https://<site-name>.netlify.app`.
+### 3. Verify
+
+- Netlify **Functions** tab should list **capture** (JavaScript)
+- `POST https://<your-site>.netlify.app/capture` should proxy to Render
+- Local dev unchanged: `uv run uvicorn src.app:app --reload`
 
 ### Notes
 
-- Each capture calls Claude + Notion and may take **15–30 seconds**. Netlify
-  functions allow up to ~30s; very long articles may timeout.
-- Secrets stay in Netlify env vars — never commit `.env`.
-- Local dev: `uv run uvicorn src.app:app --reload` (no Netlify CLI required).
+- Captures often take 15–30 seconds (fetch + Claude + Notion).
+- If you see **404 on /capture**, the JS function did not deploy — check the Functions tab.
+- If you see **503 API_URL is not set**, add `API_URL` on Netlify and redeploy.
 
 ## Project layout
 

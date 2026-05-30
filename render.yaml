@@ -1,0 +1,20 @@
+# Deploy the FastAPI backend at https://render.com (free tier available).
+# After deploy, set API_URL on Netlify to this service's URL (e.g. https://article-capture-api.onrender.com).
+services:
+  - type: web
+    name: article-capture-api
+    runtime: python
+    plan: free
+    buildCommand: curl -LsSf https://astral.sh/uv/install.sh | sh && export PATH="$HOME/.local/bin:$PATH" && uv sync --frozen --no-dev --no-install-project
+    startCommand: uv run uvicorn src.app:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.11.11"
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      - key: ANTHROPIC_MODEL
+        sync: false
+      - key: NOTION_API_KEY
+        sync: false
+      - key: NOTION_DATABASE_ID
+        sync: false
