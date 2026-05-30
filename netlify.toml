@@ -1,3 +1,4 @@
 [build]
   publish = "static"
   functions = "netlify/functions"
+  command = "node scripts/write-config.mjs"

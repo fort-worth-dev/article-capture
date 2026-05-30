@@ -4,6 +4,7 @@ from pathlib import Path
 
 from fastapi import FastAPI, HTTPException
 from fastapi.exceptions import RequestValidationError
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse
 
 from src.pipeline import (
@@ -15,6 +16,14 @@ from src.pipeline import (
 )
 
 app = FastAPI(title="Knowledge Pipeline")
+
+# Netlify UI calls Render directly for /capture (YouTube can exceed Netlify's ~26s proxy limit).
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_methods=["GET", "POST", "OPTIONS"],
+    allow_headers=["*"],
+)
 
 
 @app.exception_handler(RequestValidationError)

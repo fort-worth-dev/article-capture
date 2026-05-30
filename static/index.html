@@ -129,6 +129,7 @@
     <div id="result"></div>
   </div>
 
+  <script src="/config.js"></script>
   <script>
     const urlInput = document.getElementById("url");
     const goBtn = document.getElementById("go");
@@ -181,8 +182,10 @@
       resultEl.innerHTML = "";
       goBtn.disabled = true;
       setStatus("Fetching, summarizing, filing…");
+      const apiBase = (window.__API_BASE__ || "").replace(/\/$/, "");
+      const captureUrl = apiBase ? `${apiBase}/capture` : "/capture";
       try {
-        const resp = await fetch("/capture", {
+        const resp = await fetch(captureUrl, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ url })
@@ -194,7 +197,7 @@
         if (!resp.ok) {
           const message = data
             ? formatErrorDetail(data.detail)
-            : `Request failed (HTTP ${resp.status}). The function may have timed out — check Netlify function logs.`;
+            : `Request failed (HTTP ${resp.status}). Try again — long YouTube captures can take a minute.`;
           throw new Error(message);
         }
         if (!data) throw new Error("Unexpected response from server.");

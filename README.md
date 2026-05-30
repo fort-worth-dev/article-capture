@@ -78,8 +78,12 @@ The capture pipeline runs on [Render](https://render.com) as FastAPI; a small Ne
 function proxies `POST /capture` to that API.
 
 ```
-Browser → Netlify (static + capture.mjs proxy) → Render (FastAPI pipeline)
+Browser → Netlify (static UI) ──POST /capture──→ Render (FastAPI pipeline)
 ```
+
+At build time, Netlify writes `static/config.js` from `API_URL` so the browser
+calls Render **directly**. This avoids Netlify's ~26s function timeout — YouTube
+captures (Gemini + Claude) often take longer than that.
 
 ### 1. Deploy the API on Render
 
@@ -106,19 +110,19 @@ Site settings → **Environment variables**:
 
 Secrets (`ANTHROPIC_*`, `GEMINI_*`, `NOTION_*`) live on **Render only** — not Netlify.
 
-Redeploy the Netlify site after setting `API_URL`.
+Redeploy the Netlify site after setting `API_URL` (triggers a rebuild of
+`config.js`).
 
 ### 3. Verify
 
-- Netlify **Functions** tab should list **capture** (JavaScript)
-- `POST https://<your-site>.netlify.app/capture` should proxy to Render
-- Local dev unchanged: `uv run uvicorn src.app:app --reload`
+- Netlify build log should show `Wrote static/config.js`
+- Browser DevTools → Network: `POST` goes to your Render URL, not Netlify
+- Local dev unchanged: `uv run uvicorn src.app:app --reload` (uses same-origin `/capture`)
 
 ### Notes
 
-- Captures often take 15–30 seconds (fetch/transcribe + Claude + Notion).
-- YouTube uses the Gemini API on Render (public videos, preview limits apply).
-- If you see **404 on /capture**, the JS function did not deploy — check the Functions tab.
+- Captures often take 15–60 seconds (YouTube: Gemini transcribe + Claude + Notion).
+- If you see **404 on /capture** locally, run uvicorn from the project root.
 - If you see **503 API_URL is not set**, add `API_URL` on Netlify and redeploy.
 
 ## Project layout
