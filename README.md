@@ -13,8 +13,8 @@ functions so they can later become tools an agent calls.
 | Web API          | FastAPI + uvicorn       | ASP.NET Core minimal APIs         |
 | Models / config  | Pydantic / pydantic-settings | records + validation / `IOptions<T>` |
 | Article text     | trafilatura             | —                                 |
-| YouTube audio    | google-genai (Gemini)   | —                                 |
-| Summaries        | anthropic (Claude)      | —                                 |
+| YouTube          | google-genai (Gemini)   | —                                 |
+| Article summaries| anthropic (Claude)      | —                                 |
 | Storage          | notion-client           | —                                 |
 | Packaging        | uv                      | NuGet + .csproj                   |
 
@@ -83,7 +83,7 @@ Browser → Netlify (static UI) ──POST /capture──→ Render (FastAPI pip
 
 At build time, Netlify writes `static/config.js` from `API_URL` so the browser
 calls Render **directly**. This avoids Netlify's ~26s function timeout — YouTube
-captures (Gemini + Claude) often take longer than that.
+captures (Gemini summarize) often take longer than that.
 
 ### 1. Deploy the API on Render
 
@@ -121,7 +121,7 @@ Redeploy the Netlify site after setting `API_URL` (triggers a rebuild of
 
 ### Notes
 
-- Captures often take 15–60 seconds (YouTube: Gemini transcribe + Claude + Notion).
+- Captures often take 15–60 seconds (YouTube: Gemini summarize + Notion).
 - If you see **404 on /capture** locally, run uvicorn from the project root.
 - If you see **503 API_URL is not set**, add `API_URL` on Netlify and redeploy.
 
@@ -132,11 +132,11 @@ src/
   extractors/
     base.py        # ContentExtractor interface (the Strategy seam)
     article.py     # trafilatura
-    youtube.py     # Gemini transcription + oEmbed metadata
+    youtube.py     # oEmbed metadata (Gemini summarizes in summarizer.py)
     registry.py    # picks an extractor by URL; article is the fallback
   models.py        # Content (extractor output) + Summary (AI output)
   config.py        # typed settings from .env
-  summarizer.py    # Claude call, structured output via forced tool-use
+  summarizer.py    # Claude for articles; Gemini for YouTube (structured JSON)
   notion_store.py  # Summary -> Notion page
   app.py           # FastAPI: serves the page + runs the pipeline
 static/index.html  # single-page UI

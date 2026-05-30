@@ -25,7 +25,7 @@ class Content(BaseModel):
 
 
 class Summary(BaseModel):
-    """The AI's analysis of a piece of content -- the schema Claude must fill.
+    """The AI's analysis of a piece of content -- the schema models must fill.
 
     The field descriptions below are sent to the model verbatim as a tool schema,
     so they double as the prompt for each field. Tightening a description here is
