@@ -194,7 +194,7 @@
         if (!resp.ok) {
           const message = data
             ? formatErrorDetail(data.detail)
-            : (resp.statusText || "Something went wrong.");
+            : `Request failed (HTTP ${resp.status}). The function may have timed out — check Netlify function logs.`;
           throw new Error(message);
         }
         if (!data) throw new Error("Unexpected response from server.");

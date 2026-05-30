@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 import json
 import sys
+import traceback
 from pathlib import Path
 
 # Make `src` importable when Netlify runs this file from netlify/functions/.
@@ -51,11 +52,21 @@ def handler(event: dict, _context: object) -> dict:
             "headers": _JSON,
             "body": json.dumps({"detail": exc.detail}),
         }
-    except Exception:
+    except Exception as exc:
+        # Visible in Netlify → Functions → capture → Logs
+        print(f"capture failed: {type(exc).__name__}: {exc}")
+        traceback.print_exc()
         return {
             "statusCode": 500,
             "headers": _JSON,
-            "body": json.dumps({"detail": "Something went wrong."}),
+            "body": json.dumps(
+                {
+                    "detail": (
+                        f"Server error ({type(exc).__name__}): {exc}. "
+                        "Check Netlify function logs for details."
+                    )
+                }
+            ),
         }
 
     return {

@@ -5,6 +5,13 @@
 [build.environment]
   PYTHON_VERSION = "3.11"
 
+[functions]
+  # Python can't trace these imports; bundle src/ into the function artifact.
+  included_files = ["src/**"]
+
+[functions."capture"]
+  timeout = 26
+
 [[redirects]]
   from = "/capture"
   to = "/.netlify/functions/capture"
